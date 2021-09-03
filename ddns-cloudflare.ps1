@@ -26,10 +26,11 @@ function Invoke-DDNSUpdate {
     # This is to make sure when there is a problem with IPv6 but IPv4 still works, the script can still update the A record.
     try {
         if ($Settings.IPv4.Enable) {
-            # Get current public IPv4 address via api.ipify.org
-            $IPv4 = Invoke-WebRequest -NoProxy -TimeoutSec 15 https://api.ipify.org/ | Select-Object -ExpandProperty Content
+            # Get current public IPv4 address via AddressAPI
+            $IPv4 = Invoke-WebRequest -NoProxy -TimeoutSec 15 $Settings.IPv4.AddressAPI | Select-Object -ExpandProperty Content
+            $IPv4 = $IPv4.Trim()
             if ($IPv4.Length -le 0) {
-                throw "Failed to get current public IPv4 address: api.ipify.org is probably down.";
+                throw "Failed to get current public IPv4 address: " + $Settings.IPv4.AddressAPI + " is probably down.";
             }
             # Compare the results.
             if ($Settings.EnableCompare) {

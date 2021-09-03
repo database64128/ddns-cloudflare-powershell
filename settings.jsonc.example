@@ -16,7 +16,8 @@
         "Enable": true,
         "Proxied": "false",
         "Hostname": "example.com",
-        "CloudflareUri": "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/dns_records/<RECORD_ID>"
+        "CloudflareUri": "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/dns_records/<RECORD_ID>",
+        "AddressAPI": "https://api.ipify.org/"
     },
     // Resolve the hostname and compare with current IP to decide whether to send an update request.
     "EnableCompare": true,
