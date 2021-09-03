@@ -22,10 +22,10 @@ function Write-Log {
 }
 
 function Invoke-DDNSUpdate {
-    # If $Settings.EnableIPv6 was $True but no IPv6 address was detected, $IPv6.Length would be zero and the AAAA record wouldn't be updated.
+    # If $Settings.IPv6.Enable was $True but no IPv6 address was detected, $IPv6.Length would be zero and the AAAA record wouldn't be updated.
     # This is to make sure when there is a problem with IPv6 but IPv4 still works, the script can still update the A record.
     try {
-        if ($Settings.EnableIPv4) {
+        if ($Settings.IPv4.Enable) {
             # Get current public IPv4 address via api.ipify.org
             $IPv4 = Invoke-WebRequest -NoProxy -TimeoutSec 15 https://api.ipify.org/ | Select-Object -ExpandProperty Content
             if ($IPv4.Length -le 0) {
@@ -35,11 +35,11 @@ function Invoke-DDNSUpdate {
             if ($Settings.EnableCompare) {
                 # Resolve the A record
                 if ($IsWindows) {
-                    $IPv4Resolved = Resolve-DnsName -Name $Settings.HostnameIPv4 -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
+                    $IPv4Resolved = Resolve-DnsName -Name $Settings.IPv4.Hostname -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
                 }
                 if ($IsLinux) {
-                    $Temp = ('s/' + $Settings.HostnameHostnameIPv4 + ' has address //p')
-                    $IPv4Resolved = /usr/bin/host -t A $Settings.HostnameHostnameIPv4 | sed -n $Temp
+                    $Temp = ('s/' + $Settings.IPv4.Hostname + ' has address //p')
+                    $IPv4Resolved = /usr/bin/host -t A $Settings.IPv4.Hostname | sed -n $Temp
                 }
                 if ($IPv4Resolved.Length -le 0) {
                     throw "Failed to resolve the A record. Operation aborted.";
@@ -49,11 +49,17 @@ function Invoke-DDNSUpdate {
                     Return
                 }
             }
-             # Send request to update the record.
-            $Result = Invoke-WebRequest -NoProxy -TimeoutSec 15 -Uri $Settings.CloudflareUriIPv4 -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } -Body ('{"type":"A","name":"' + $Settings.HostnameIPv4 + '","content":"' + $IPv4 + '","ttl":120,"proxied":false}') | Select-Object -ExpandProperty Content
+            # Send request to update the record.
+            $parms = @{
+                NoProxy = !$Settings.UseProxy
+                TimeoutSec = 15
+                Uri = $Settings.IPv4.CloudflareUri
+                Body = ('{"type":"A","name":"' + $Settings.IPv4.Hostname + '","content":"' + $IPv4 + '","ttl":120,"proxied":'+ $Settings.IPv4.Proxied + '}') 
+            }
+            $Result = Invoke-WebRequest @parms -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } | Select-Object -ExpandProperty Content
             Write-Log -Content $Result
         }        
-        if ($Settings.EnableIPv6) {
+        if ($Settings.IPv6.Enable) {
             # Get current IPv6 address using OS-specific utilities
             # $IPv6 = Invoke-WebRequest -NoProxy -TimeoutSec 15 https://api6.ipify.org/ | Select-Object -ExpandProperty Content
             if ($IsWindows) {
@@ -71,11 +77,11 @@ function Invoke-DDNSUpdate {
             if ($Settings.EnableCompare) {
                 # Resolve the AAAA record
                 if ($IsWindows) {
-                    $IPv6Resolved = Resolve-DnsName -Name $Settings.HostnameIPv6 -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress
+                    $IPv6Resolved = Resolve-DnsName -Name $Settings.IPv6.Hostname -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress
                 }
                 if ($IsLinux) {
-                    $Temp = ('s/' + $Settings.HostnameIPv6 + ' has IPv6 address //p')
-                    $IPv6Resolved = /usr/bin/host -t AAAA $Settings.HostnameIPv6 | sed -n $Temp
+                    $Temp = ('s/' + $Settings.IPv6.Hostname + ' has IPv6 address //p')
+                    $IPv6Resolved = /usr/bin/host -t AAAA $Settings.IPv6.Hostname | sed -n $Temp
                 }
                 if ($IPv6Resolved.Length -le 0) {
                     throw "Failed to resolve the AAAA record. Operation aborted.";
@@ -86,7 +92,13 @@ function Invoke-DDNSUpdate {
                 }
             }
             # Send request to update the record.
-            $Result = Invoke-WebRequest -NoProxy -TimeoutSec 15 -Uri $Settings.CloudflareUriIPv6 -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } -Body ('{"type":"AAAA","name":"' + $Settings.HostnameIPv6 + '","content":"' + $IPv6 + '","ttl":120,"proxied":false}') | Select-Object -ExpandProperty Content
+            $parms = @{
+                NoProxy = !$Settings.UseProxy
+                TimeoutSec = 15
+                Uri = $Settings.IPv6.CloudflareUri
+                Body = ('{"type":"AAAA","name":"' + $Settings.IPv6.Hostname + '","content":"' + $IPv6 + '","ttl":120,"proxied":'+ $Settings.IPv6.Proxied + '}') 
+            }
+            $Result = Invoke-WebRequest @parms -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } | Select-Object -ExpandProperty Content
             Write-Log -Content $Result
         }
         # Debug
