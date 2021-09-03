@@ -1,0 +1,17 @@
+{
+    // Leave empty to print to stdout.
+    "LogFilePath": "ddns.log",
+    // The interval for periodic checks in seconds, 0 for an one-shot run.
+    "Interval": 300,
+    // You can find them in Chrome Devtools.
+    "CloudflareUriIPv6": "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/dns_records/<RECORD_ID>",
+    "CloudflareUriIPv4": "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/dns_records/<RECORD_ID>",
+    "HostnameIPv6": "example.com",
+    "HostnameIPv4": "example.com",
+    "EnableIPv6": true,
+    "EnableIPv4": true,
+    // Just need DNS edit permission, create at https://dash.cloudflare.com/profile/api-tokens
+    "OAuthToken": "<OAuthToken>",
+    // Resolve the hostname and compare with current IP to decide whether to send an update request.
+    "EnableCompare": false
+}

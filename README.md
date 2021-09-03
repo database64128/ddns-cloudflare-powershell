@@ -10,7 +10,7 @@ A simple Powershell script for DDNS with Cloudflare API.
 
 ## 🔌 Usage
 
-- Edit `ddns-cloudflare-config.ps1`. Fill in your hostname, OAuth token, DNS zone ID and target record ID.
+- Rename `settings.jsonc.example` to `settings.jsonc` and fill in your hostname, OAuth token, DNS zone ID and target record ID.
 - For Linux, place the systemd unit files to the proper location. Enable and start the timer.
 - For Windows, import `ddns-cloudflare-powershell.xml` to Task Scheduler. Start the task.
 

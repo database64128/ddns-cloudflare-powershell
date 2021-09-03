@@ -31,23 +31,28 @@ function Invoke-DDNSUpdate {
             if ($IPv4.Length -le 0) {
                 throw "Failed to get current public IPv4 address: api.ipify.org is probably down.";
             }
-            # Resolve the A record
-            if ($IsWindows) {
-                $IPv4Resolved = Resolve-DnsName -Name $Settings.Hostname -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
+            # Compare the results.
+            if ($Settings.EnableCompare) {
+                # Resolve the A record
+                if ($IsWindows) {
+                    $IPv4Resolved = Resolve-DnsName -Name $Settings.HostnameIPv4 -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
+                }
+                if ($IsLinux) {
+                    $Temp = ('s/' + $Settings.HostnameHostnameIPv4 + ' has address //p')
+                    $IPv4Resolved = /usr/bin/host -t A $Settings.HostnameHostnameIPv4 | sed -n $Temp
+                }
+                if ($IPv4Resolved.Length -le 0) {
+                    throw "Failed to resolve the A record. Operation aborted.";
+                }
+                if ($IPv4 -eq $IPv4Resolved) {
+                    # Write-Log -Content "Same IPv4 record:",$IPv4
+                    Return
+                }
             }
-            if ($IsLinux) {
-                $Temp = ('s/' + $Settings.Hostname + ' has address //p')
-                $IPv4Resolved = /usr/bin/host -t A $Settings.Hostname | sed -n $Temp
-            }
-            if ($IPv4Resolved.Length -le 0) {
-                throw "Failed to resolve the A record. Operation aborted.";
-            }
-            # Compare the results and update the record if necessary.
-            if ($IPv4 -ne $IPv4Resolved) {
-                $Result = Invoke-WebRequest -TimeoutSec 15 -Uri $Settings.CloudflareUriIPv4 -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } -Body ('{"type":"A","name":"' + $Settings.Hostname + '","content":"' + $IPv4 + '","ttl":120,"proxied":false}') | Select-Object -ExpandProperty Content
-                Write-Log -Content $Result
-            }
-        }
+             # Send request to update the record.
+            $Result = Invoke-WebRequest -NoProxy -TimeoutSec 15 -Uri $Settings.CloudflareUriIPv4 -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } -Body ('{"type":"A","name":"' + $Settings.HostnameIPv4 + '","content":"' + $IPv4 + '","ttl":120,"proxied":false}') | Select-Object -ExpandProperty Content
+            Write-Log -Content $Result
+        }        
         if ($Settings.EnableIPv6) {
             # Get current IPv6 address using OS-specific utilities
             # $IPv6 = Invoke-WebRequest -NoProxy -TimeoutSec 15 https://api6.ipify.org/ | Select-Object -ExpandProperty Content
@@ -62,22 +67,27 @@ function Invoke-DDNSUpdate {
             if ($IPv6.Length -le 0) {
                 throw "Failed to get current IPv6 address, skipping IPv6..."
             }
-            # Resolve the AAAA record
-            if ($IsWindows) {
-                $IPv6Resolved = Resolve-DnsName -Name $Settings.Hostname -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress
+            # Compare the results.
+            if ($Settings.EnableCompare) {
+                # Resolve the AAAA record
+                if ($IsWindows) {
+                    $IPv6Resolved = Resolve-DnsName -Name $Settings.HostnameIPv6 -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress
+                }
+                if ($IsLinux) {
+                    $Temp = ('s/' + $Settings.HostnameIPv6 + ' has IPv6 address //p')
+                    $IPv6Resolved = /usr/bin/host -t AAAA $Settings.HostnameIPv6 | sed -n $Temp
+                }
+                if ($IPv6Resolved.Length -le 0) {
+                    throw "Failed to resolve the AAAA record. Operation aborted.";
+                }
+                if ($IPv6 -eq $IPv6Resolved) {
+                    # Write-Log -Content "Same IPv6 record:",$IPv6
+                    Return
+                }
             }
-            if ($IsLinux) {
-                $Temp = ('s/' + $Settings.Hostname + ' has IPv6 address //p')
-                $IPv6Resolved = /usr/bin/host -t AAAA $Settings.Hostname | sed -n $Temp
-            }
-            if ($IPv6Resolved.Length -le 0) {
-                throw "Failed to resolve the AAAA record. Operation aborted.";
-            }
-            # Compare the results and update the record if necessary.
-            if ($IPv6 -ne $IPv6Resolved) {
-                $Result = Invoke-WebRequest -TimeoutSec 15 -Uri $Settings.CloudflareUriIPv6 -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } -Body ('{"type":"AAAA","name":"' + $Settings.Hostname + '","content":"' + $IPv6 + '","ttl":120,"proxied":false}') | Select-Object -ExpandProperty Content
-                Write-Log -Content $Result
-            }
+            # Send request to update the record.
+            $Result = Invoke-WebRequest -NoProxy -TimeoutSec 15 -Uri $Settings.CloudflareUriIPv6 -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } -Body ('{"type":"AAAA","name":"' + $Settings.HostnameIPv6 + '","content":"' + $IPv6 + '","ttl":120,"proxied":false}') | Select-Object -ExpandProperty Content
+            Write-Log -Content $Result
         }
         # Debug
         # Write-Host ("IPv6: " + $IPv6 + "`nIPv4: " + $IPv4 + "`nIPv6 resolved: " + $IPv6Resolved + "`nIPv4 resolved: " + $IPv4Resolved)
@@ -97,7 +107,7 @@ if ($Settings.Interval -gt 0) {
     Write-Log -Content "Started periodic DDNS updater at intervals of $($Settings.Interval) seconds."
     while ($True) {
         Invoke-DDNSUpdate
-        Start-Sleep -Seconds 300
+        Start-Sleep -Seconds $Settings.Interval
     }
 }
 else {
