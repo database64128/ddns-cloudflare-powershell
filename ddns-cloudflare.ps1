@@ -33,7 +33,7 @@ function Invoke-DDNSUpdate {
                 throw "Failed to get current public IPv4 address: " + $Settings.IPv4.AddressAPI + " is probably down.";
             }
             # Compare the results.
-            if ($Settings.EnableCompare) {
+            if ($Settings.EnabledCompare) {
                 # Resolve the A record
                 if ($IsWindows) {
                     $IPv4Resolved = Resolve-DnsName -Name $Settings.IPv4.Hostname -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
@@ -75,7 +75,7 @@ function Invoke-DDNSUpdate {
                 throw "Failed to get current IPv6 address, skipping IPv6..."
             }
             # Compare the results.
-            if ($Settings.EnableCompare) {
+            if ($Settings.EnabledCompare) {
                 # Resolve the AAAA record
                 if ($IsWindows) {
                     $IPv6Resolved = Resolve-DnsName -Name $Settings.IPv6.Hostname -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress

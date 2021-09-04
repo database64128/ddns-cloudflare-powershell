@@ -1,7 +1,7 @@
 {
     // Leave empty to print to stdout.
     "LogFilePath": "ddns.log",
-    // The interval for periodic checks in seconds, 0 for an one-shot run.
+    // The interval for periodic checks in seconds, 0 for a one-shot run.
     "Interval": 300,
     // Just need DNS edit permission, create at https://dash.cloudflare.com/profile/api-tokens
     "OAuthToken": "<OAuthToken>",
@@ -20,7 +20,7 @@
         "AddressAPI": "https://api.ipify.org/"
     },
     // Resolve the hostname and compare with current IP to decide whether to send an update request.
-    "EnableCompare": true,
+    "EnabledCompare": true,
     // Use proxy in environment variables to connect Cloudflare API or not.
     "UseProxy": true
 }
