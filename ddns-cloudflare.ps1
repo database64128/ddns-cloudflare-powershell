@@ -25,7 +25,7 @@ function Invoke-DDNSUpdate {
     # If $Settings.IPv6.Enable was $True but no IPv6 address was detected, $IPv6.Length would be zero and the AAAA record wouldn't be updated.
     # This is to make sure when there is a problem with IPv6 but IPv4 still works, the script can still update the A record.
     try {
-        if ($Settings.IPv4.Enable) {
+        if ($Settings.IPv4.Enabled) {
             # Get current public IPv4 address via AddressAPI
             $IPv4 = Invoke-WebRequest -NoProxy -TimeoutSec 15 $Settings.IPv4.AddressAPI | Select-Object -ExpandProperty Content
             $IPv4 = $IPv4.Trim()
@@ -33,7 +33,7 @@ function Invoke-DDNSUpdate {
                 throw "Failed to get current public IPv4 address: " + $Settings.IPv4.AddressAPI + " is probably down.";
             }
             # Compare the results.
-            if ($Settings.EnabledCompare) {
+            if ($Settings.EnableCompare) {
                 # Resolve the A record
                 if ($IsWindows) {
                     $IPv4Resolved = Resolve-DnsName -Name $Settings.IPv4.Hostname -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
@@ -60,7 +60,7 @@ function Invoke-DDNSUpdate {
             $Result = Invoke-WebRequest @parms -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } | Select-Object -ExpandProperty Content
             Write-Log -Content $Result
         }        
-        if ($Settings.IPv6.Enable) {
+        if ($Settings.IPv6.Enabled) {
             # Get current IPv6 address using OS-specific utilities
             # $IPv6 = Invoke-WebRequest -NoProxy -TimeoutSec 15 https://api6.ipify.org/ | Select-Object -ExpandProperty Content
             if ($IsWindows) {
@@ -75,7 +75,7 @@ function Invoke-DDNSUpdate {
                 throw "Failed to get current IPv6 address, skipping IPv6..."
             }
             # Compare the results.
-            if ($Settings.EnabledCompare) {
+            if ($Settings.EnableCompare) {
                 # Resolve the AAAA record
                 if ($IsWindows) {
                     $IPv6Resolved = Resolve-DnsName -Name $Settings.IPv6.Hostname -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress

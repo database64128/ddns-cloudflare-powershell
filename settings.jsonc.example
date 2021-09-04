@@ -7,20 +7,20 @@
     "OAuthToken": "<OAuthToken>",
     // You can find ZONE_ID and RECORD_ID in Chrome Devtools.
     "IPv6": {
-        "Enable": true,
+        "Enabled": true,
         "Proxied": "false",
         "Hostname": "example.com",
         "CloudflareUri": "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/dns_records/<RECORD_ID>"
     },
     "IPv4": {
-        "Enable": true,
+        "Enabled": true,
         "Proxied": "false",
         "Hostname": "example.com",
         "CloudflareUri": "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/dns_records/<RECORD_ID>",
         "AddressAPI": "https://api.ipify.org/"
     },
     // Resolve the hostname and compare with current IP to decide whether to send an update request.
-    "EnabledCompare": true,
+    "EnableCompare": true,
     // Use proxy in environment variables to connect Cloudflare API or not.
     "UseProxy": true
 }
