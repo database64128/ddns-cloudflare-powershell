@@ -4,18 +4,19 @@ A simple Powershell script for DDNS with Cloudflare API.
 
 ## ✨ Features
 
-- Dual-stack support: IPv4 + IPv6.
-- Log file support.
-- Resolve the hostname and compare with current IP to decide whether to send an update request.
+- Ease of use: Automatically create new DNS records or reuse existing records.
+- Dual-stack support: Enable A and/or AAAA record updates on demand.
+- Low overhead: Send API requests only when IP changes.
+- Logging: Print to stdout or log file.
 
 ## 🔌 Usage
 
-- Rename `settings.jsonc.example` to `settings.jsonc` and fill in your hostname, OAuth token, DNS zone ID and target record ID.
-- For Linux, place the systemd unit files to the proper location. Enable and start the timer.
+- Copy `settings.jsonc.example` to `settings.jsonc` and fill in your hostname, OAuth token, and DNS zone ID.
+- For Linux, place the systemd unit file to a proper location. Enable and start the service.
 - For Windows, import `ddns-cloudflare-powershell.xml` to Task Scheduler. Start the task.
 
 ## ⚖ License
 
 - This project is licensed under [GPLv3](LICENSE).
 
-© 2020 database64128
+© 2021 database64128
