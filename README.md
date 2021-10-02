@@ -1,5 +1,7 @@
 # `ddns-cloudflare-powershell`
 
+[![AUR version](https://img.shields.io/aur/version/ddns-cloudflare-powershell-git?label=ddns-cloudflare-powershell-git)](https://aur.archlinux.org/packages/ddns-cloudflare-powershell-git/)
+
 A simple Powershell script for DDNS with Cloudflare API.
 
 ## ✨ Features
@@ -11,9 +13,11 @@ A simple Powershell script for DDNS with Cloudflare API.
 
 ## 🔌 Usage
 
-- Copy `settings.jsonc.example` to `settings.jsonc` and fill in your hostname, OAuth token, and DNS zone ID.
-- For Linux, place the systemd unit file to a proper location. Enable and start the service.
-- For Windows, import `ddns-cloudflare-powershell.xml` to Task Scheduler. Start the task.
+### Arch Linux
+
+- Install [ddns-cloudflare-powershell-git](https://aur.archlinux.org/packages/ddns-cloudflare-powershell-git/) from AUR.
+- Edit `/etc/ddns-cloudflare-powershell/settings.jsonc` to change settings and fill in your hostname, OAuth token, and DNS zone ID.
+- Enable and start `ddns-cloudflare-powershell.service`.
 
 ## ⚖ License
 
