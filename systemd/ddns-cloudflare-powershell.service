@@ -4,7 +4,7 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=/usr/bin/ddns-cloudflare-powershell
+ExecStart=/usr/bin/ddns-cloudflare-powershell -ConfigPath /etc/ddns-cloudflare-powershell/settings.jsonc -LogNoDate
 
 [Install]
 WantedBy=multi-user.target
