@@ -1,15 +1,11 @@
 [Unit]
-Description=Updating domain.name on IP change
-BindsTo=sys-subsystem-net-devices-eth0.device
-After=sys-subsystem-net-devices-eth0.device
+Description=Cloudflare DDNS Updater
 Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=no
-ExecStart=pwsh -File /path/to/ddns-cloudflare-powershell/ddns-cloudflare.ps1
-WorkingDirectory=/path/to/ddns-cloudflare-powershell
+ExecStart=/usr/bin/ddns-cloudflare-powershell
+WorkingDirectory=/var/log/ddns-cloudflare-powershell
 
 [Install]
 WantedBy=multi-user.target
