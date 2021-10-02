@@ -1,8 +1,10 @@
-# DDNS update script for Cloudflare DNS for pwsh on Windows and Linux
-# This script checks if DNS records need updating by making DNS queries and comparing the results with current IP addresses.
-# When both IPv4 and IPv6 are enabled, the script will fail if no IPv4 connectivity is available. It will work even if you only have IPv4.
+#!/bin/pwsh
+# DDNS update script for Cloudflare DNS.
+# This script first retrieves existing DNS records that match the configured hostnames from Cloudflare API.
+# Each time it checks the current IP against the DNS record to decide whether to create or update a DNS record.
+# This script supports both Linux and Windows.
 
-# macOS
+# No macOS support.
 if ($IsMacOS) {
     Write-Host -Object "macOS is not supported."
     Return
@@ -21,93 +23,166 @@ function Write-Log {
     }
 }
 
-function Invoke-DDNSUpdate {
-    # If $Settings.IPv6.Enable was $True but no IPv6 address was detected, $IPv6.Length would be zero and the AAAA record wouldn't be updated.
-    # This is to make sure when there is a problem with IPv6 but IPv4 still works, the script can still update the A record.
+function Get-DNSRecord {
+    param (
+        [string]$Hostname,
+        [string]$Type
+    )
+
+    $Body = @{
+        name = $Hostname
+        type = $Type
+    }
+
+    return Invoke-RestMethod $DNSRecordsUri -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec 15 -NoProxy:$Settings.NoProxy
+}
+
+function New-DNSRecord {
+    param (
+        [string]$Type,
+        [string]$Hostname,
+        [string]$IP,
+        [int]$TTL = 60,
+        [bool]$Proxied = $false
+    )
+
+    $Data = @{
+        type    = $Type
+        name    = $Hostname
+        content = $IP
+        ttl     = $TTL
+        proxied = $Proxied
+    }
+
+    $Body = ConvertTo-Json $Data
+
+    return Invoke-RestMethod $DNSRecordsUri -Method Post -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec 15 -NoProxy:$Settings.NoProxy
+}
+
+function Update-DNSRecordIP {
+    param (
+        [string]$RecordID,
+        [string]$IP
+    )
+
+    $Data = @{
+        content = $IP
+    }
+
+    $Body = ConvertTo-Json $Data
+
+    return Invoke-RestMethod "$DNSRecordsUri/$RecordID" -Method Patch -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec 15 -NoProxy:$Settings.NoProxy
+}
+
+function Update-IPv4DNSRecord {
+    # Get current public IPv4 address via AddressAPI
+    $IPv4 = Invoke-RestMethod -NoProxy -TimeoutSec 15 $Settings.IPv4.AddressAPI
+    if ($IPv4.Length -le 0) {
+        throw ("Failed to get current public IPv4 address: " + $Settings.IPv4.AddressAPI + " is probably down.");
+    }
+
+    if ($null -eq $DNSRecordA) {
+        # No existing A record. Create a new one.
+        $Result = New-DNSRecord -Type "A" -Hostname $Settings.IPv4.Hostname -IP $IPv4 -TTL 60 -Proxied $Settings.IPv4.Proxied
+        if ($Result.success) {
+            $Script:DNSRecordA = $Result.result
+            Write-Log -Content ("Successfully created a new A record for " + $Settings.IPv4.Hostname + " with IP ${IPv4}: $Result")
+        }
+        else {
+            Write-Log -Content ("Failed to create a new A record for " + $Settings.IPv4.Hostname + " with IP ${IPv4}: $Result")
+        }
+    }
+    else {
+        # Compare current IPv4 with A record.
+        if ($IPv4 -ne $DNSRecordA.content) {
+            $Result = Update-DNSRecordIP -RecordID $DNSRecordA.id -IP $IPv4
+            if ($Result.success) {
+                $Script:DNSRecordA = $Result.result
+                Write-Log -Content ("Successfully updated A record for " + $Settings.IPv4.Hostname + " with IP ${IPv4}: $Result")
+            }
+            else {
+                Write-Log -Content ("Failed to update A record for " + $Settings.IPv4.Hostname + " with IP ${IPv4}: $Result")
+            }
+        }
+    }
+}
+
+function Update-IPv6DNSRecord {
+    # $IPv6 = Invoke-RestMethod -NoProxy -TimeoutSec 15 https://api6.ipify.org/
+    # Get current IPv6 address using OS-specific utilities
+    if ($IsWindows) {
+        $IPv6 = Get-NetIPAddress -AddressFamily IPv6 -PrefixOrigin RouterAdvertisement -SuffixOrigin Link | Select-Object -First 1 -ExpandProperty IPAddress
+    }
+    if ($IsLinux) {
+        # mngtmpaddr may not exist in non-SLAAC configurations
+        # filter temporary IPv6 addresses (privacy extension)
+        # TODO: Consider replacing this piece of magic with `ip -j` JSON output parsing.
+        $IPv6 = ip -6 addr list scope global noprefixroute | grep -v -e " fd" -e "temporary" | sed -n 's/.*inet6 \([0-9a-f:]\+\).*/\1/p' | head -n 1
+    }
+    if ($IPv6.Length -le 0) {
+        throw "Failed to get current IPv6 address, skipping IPv6..."
+    }
+
+    if ($null -eq $DNSRecordAAAA) {
+        # No existing AAAA record. Create a new one.
+        $Result = New-DNSRecord -Type "AAAA" -Hostname $Settings.IPv6.Hostname -IP $IPv6 -TTL 60 -Proxied $Settings.IPv6.Proxied
+        if ($Result.success) {
+            $Script:DNSRecordAAAA = $Result.result
+            Write-Log -Content ("Successfully created a new AAAA record for " + $Settings.IPv6.Hostname + " with IP ${IPv6}: $Result")
+        }
+        else {
+            Write-Log -Content ("Failed to create a new AAAA record for " + $Settings.IPv6.Hostname + " with IP ${IPv6}: $Result")
+        }
+    }
+    else {
+        # Compare current IPv6 with AAAA record.
+        if ($IPv6 -ne $DNSRecordAAAA.content) {
+            $Result = Update-DNSRecordIP -RecordID $DNSRecordAAAA.id -IP $IPv6
+            if ($Result.success) {
+                $Script:DNSRecordAAAA = $Result.result
+                Write-Log -Content ("Successfully updated AAAA record for " + $Settings.IPv6.Hostname + " with IP ${IPv6}: $Result")
+            }
+            else {
+                Write-Log -Content ("Failed to update AAAA record for " + $Settings.IPv6.Hostname + " with IP ${IPv6}: $Result")
+            }
+        }
+    }
+}
+
+function Initialize-DNSRecords {
+    if ($Settings.IPv4.Enabled) {
+        $Result = Get-DNSRecord -Hostname $Settings.IPv4.Hostname -Type "A"
+        if ($Result.result.Length -gt 0) {
+            $Script:DNSRecordA = $Result.result[0]
+            Write-Log -Content "Got initial A record: $DNSRecordA"
+        }
+        else {
+            Write-Log -Content ("Found no existing A record for " + $Settings.IPv4.Hostname)
+        }
+    }
+    if ($Settings.IPv6.Enabled) {
+        $Result = Get-DNSRecord -Hostname $Settings.IPv6.Hostname -Type "AAAA"
+        if ($Result.result.Length -gt 0) {
+            $Script:DNSRecordAAAA = $Result.result[0]
+            Write-Log -Content "Got initial AAAA record: $DNSRecordAAAA"
+        }
+        else {
+            Write-Log -Content ("Found no existing AAAA record for " + $Settings.IPv6.Hostname)
+        }
+    }
+}
+
+function Update-DNSRecords {
     try {
         if ($Settings.IPv4.Enabled) {
-            # Get current public IPv4 address via AddressAPI
-            $IPv4 = Invoke-WebRequest -NoProxy -TimeoutSec 15 $Settings.IPv4.AddressAPI | Select-Object -ExpandProperty Content
-            $IPv4 = $IPv4.Trim()
-            if ($IPv4.Length -le 0) {
-                throw "Failed to get current public IPv4 address: " + $Settings.IPv4.AddressAPI + " is probably down.";
-            }
-            # Compare the results.
-            if ($Settings.EnableCompare) {
-                # Resolve the A record
-                if ($IsWindows) {
-                    $IPv4Resolved = Resolve-DnsName -Name $Settings.IPv4.Hostname -DnsOnly -QuickTimeout -Type A | Select-Object -First 1 -ExpandProperty IPAddress
-                }
-                if ($IsLinux) {
-                    $Temp = ('s/' + $Settings.IPv4.Hostname + ' has address //p')
-                    $IPv4Resolved = /usr/bin/host -t A $Settings.IPv4.Hostname | sed -n $Temp
-                }
-                if ($IPv4Resolved.Length -le 0) {
-                    throw "Failed to resolve the A record. Operation aborted.";
-                }
-                if ($IPv4 -eq $IPv4Resolved) {
-                    # Write-Log -Content "Same IPv4 record:",$IPv4
-                    Return
-                }
-            }
-            # Send request to update the record.
-            $parms = @{
-                NoProxy = !$Settings.UseProxy
-                TimeoutSec = 15
-                Uri = $Settings.IPv4.CloudflareUri
-                Body = ('{"type":"A","name":"' + $Settings.IPv4.Hostname + '","content":"' + $IPv4 + '","ttl":120,"proxied":'+ $Settings.IPv4.Proxied + '}') 
-            }
-            $Result = Invoke-WebRequest @parms -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } | Select-Object -ExpandProperty Content
-            Write-Log -Content $Result
-        }        
-        if ($Settings.IPv6.Enabled) {
-            # Get current IPv6 address using OS-specific utilities
-            # $IPv6 = Invoke-WebRequest -NoProxy -TimeoutSec 15 https://api6.ipify.org/ | Select-Object -ExpandProperty Content
-            if ($IsWindows) {
-                $IPv6 = Get-NetIPAddress -AddressFamily IPv6 -PrefixOrigin RouterAdvertisement -SuffixOrigin Link | Select-Object -First 1 -ExpandProperty IPAddress
-            }
-            if ($IsLinux) {
-                # mngtmpaddr may not exist in non-SLAAC configurations
-                # filter temporary IPv6 addresses (privacy extension)
-                $IPv6 = ip -6 addr list scope global noprefixroute | grep -v -e " fd" -e "temporary" | sed -n 's/.*inet6 \([0-9a-f:]\+\).*/\1/p' | head -n 1
-            }
-            if ($IPv6.Length -le 0) {
-                throw "Failed to get current IPv6 address, skipping IPv6..."
-            }
-            # Compare the results.
-            if ($Settings.EnableCompare) {
-                # Resolve the AAAA record
-                if ($IsWindows) {
-                    $IPv6Resolved = Resolve-DnsName -Name $Settings.IPv6.Hostname -DnsOnly -QuickTimeout -Type AAAA | Select-Object -First 1 -ExpandProperty IPAddress
-                }
-                if ($IsLinux) {
-                    $Temp = ('s/' + $Settings.IPv6.Hostname + ' has IPv6 address //p')
-                    $IPv6Resolved = /usr/bin/host -t AAAA $Settings.IPv6.Hostname | sed -n $Temp
-                }
-                if ($IPv6Resolved.Length -le 0) {
-                    throw "Failed to resolve the AAAA record. Operation aborted.";
-                }
-                if ($IPv6 -eq $IPv6Resolved) {
-                    # Write-Log -Content "Same IPv6 record:",$IPv6
-                    Return
-                }
-            }
-            # Send request to update the record.
-            $parms = @{
-                NoProxy = !$Settings.UseProxy
-                TimeoutSec = 15
-                Uri = $Settings.IPv6.CloudflareUri
-                Body = ('{"type":"AAAA","name":"' + $Settings.IPv6.Hostname + '","content":"' + $IPv6 + '","ttl":120,"proxied":'+ $Settings.IPv6.Proxied + '}') 
-            }
-            $Result = Invoke-WebRequest @parms -Method PUT -Authentication OAuth -Token (ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force) -Headers @{"Content-Type" = "application/json" } | Select-Object -ExpandProperty Content
-            Write-Log -Content $Result
+            Update-IPv4DNSRecord
         }
-        # Debug
-        # Write-Host ("IPv6: " + $IPv6 + "`nIPv4: " + $IPv4 + "`nIPv6 resolved: " + $IPv6Resolved + "`nIPv4 resolved: " + $IPv4Resolved)
+        if ($Settings.IPv6.Enabled) {
+            Update-IPv6DNSRecord
+        }
     }
     catch {
         Write-Log -Content "Exception thrown: $($_.Exception.Message)"
-        Return
     }
 }
 
@@ -115,15 +190,21 @@ $ErrorActionPreference = "Stop"
 
 # Load config
 $Settings = Get-Content -Path settings.jsonc | ConvertFrom-Json
+$OAuthToken = ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force
+$DNSRecordsUri = "https://api.cloudflare.com/client/v4/zones/" + $Settings.ZoneID + "/dns_records"
 
+# Load existing records
+Initialize-DNSRecords
+
+# Start update loop
 if ($Settings.Interval -gt 0) {
     Write-Log -Content "Started periodic DDNS updater at intervals of $($Settings.Interval) seconds."
     while ($True) {
-        Invoke-DDNSUpdate
+        Update-DNSRecords
         Start-Sleep -Seconds $Settings.Interval
     }
 }
 else {
     Write-Log -Content "Started one-shot DDNS updater."
-    Invoke-DDNSUpdate
+    Update-DNSRecords
 }
