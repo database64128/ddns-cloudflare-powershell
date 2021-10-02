@@ -5,7 +5,6 @@ After=network-online.target
 
 [Service]
 ExecStart=/usr/bin/ddns-cloudflare-powershell
-WorkingDirectory=/var/log/ddns-cloudflare-powershell
 
 [Install]
 WantedBy=multi-user.target
