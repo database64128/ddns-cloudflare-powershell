@@ -240,7 +240,7 @@ function Update-DNSRecords {
         }
     }
     catch {
-        Write-LogError -Content "Exception thrown: $($_.Exception.Message)"
+        Write-LogError -Content "Error when updating DNS records: $($_.Exception.Message)"
     }
 }
 
@@ -252,7 +252,17 @@ $OAuthToken = ConvertTo-SecureString $Settings.OAuthToken -AsPlainText -Force
 $DNSRecordsUri = "https://api.cloudflare.com/client/v4/zones/" + $Settings.ZoneID + "/dns_records"
 
 # Load existing records
-Initialize-DNSRecords
+while ($True) {
+    try {
+        Initialize-DNSRecords
+        break
+    }
+    catch {
+        Write-LogError -Content "Error when loading existing DNS records: $($_.Exception.Message)"
+        Write-LogInformation -Content "Retry in $($Settings.Interval) seconds."
+        Start-Sleep -Seconds $Settings.Interval
+    }
+}
 
 # Start update loop
 if ($Settings.Interval -gt 0) {
