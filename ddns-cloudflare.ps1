@@ -78,7 +78,7 @@ function Get-DNSRecord {
         type = $Type
     }
 
-    return Invoke-RestMethod $DNSRecordsUri -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec 15 -NoProxy:$Settings.NoProxy
+    return Invoke-RestMethod $DNSRecordsUri -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -NoProxy:$Settings.NoProxy
 }
 
 function New-DNSRecord {
@@ -102,7 +102,7 @@ function New-DNSRecord {
 
     Write-LogVerbose -Content "New-DNSRecord: Generated JSON payload $Body"
 
-    return Invoke-RestMethod $DNSRecordsUri -Method Post -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec 15 -NoProxy:$Settings.NoProxy
+    return Invoke-RestMethod $DNSRecordsUri -Method Post -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -NoProxy:$Settings.NoProxy
 }
 
 function Update-DNSRecordIP {
@@ -119,12 +119,12 @@ function Update-DNSRecordIP {
 
     Write-LogVerbose -Content "Update-DNSRecordIP: Generated JSON payload $Body"
 
-    return Invoke-RestMethod "$DNSRecordsUri/$RecordID" -Method Patch -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec 15 -NoProxy:$Settings.NoProxy
+    return Invoke-RestMethod "$DNSRecordsUri/$RecordID" -Method Patch -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -NoProxy:$Settings.NoProxy
 }
 
 function Update-IPv4DNSRecord {
     # Get current public IPv4 address via AddressAPI
-    $IPv4 = Invoke-RestMethod -NoProxy -TimeoutSec 15 $Settings.IPv4.AddressAPI
+    $IPv4 = Invoke-RestMethod -NoProxy $Settings.IPv4.AddressAPI
     if ($IPv4.Length -le 0) {
         throw ("Failed to get current public IPv4 address: " + $Settings.IPv4.AddressAPI + " is probably down.");
     }
@@ -161,7 +161,7 @@ function Update-IPv4DNSRecord {
 }
 
 function Update-IPv6DNSRecord {
-    # $IPv6 = Invoke-RestMethod -NoProxy -TimeoutSec 15 https://api6.ipify.org/
+    # $IPv6 = Invoke-RestMethod -NoProxy https://api6.ipify.org/
     # Get current IPv6 address using OS-specific utilities
     if ($IsWindows) {
         $IPv6 = Get-NetIPAddress -AddressFamily IPv6 -PrefixOrigin RouterAdvertisement -SuffixOrigin Link | Select-Object -First 1 -ExpandProperty IPAddress
