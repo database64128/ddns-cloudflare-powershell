@@ -23,4 +23,4 @@ A simple Powershell script for DDNS with Cloudflare API.
 
 - This project is licensed under [GPLv3](LICENSE).
 
-© 2021 database64128
+© 2023 database64128
