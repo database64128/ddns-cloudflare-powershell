@@ -1,2 +1,2 @@
-*.jsonc
+/settings.jsonc
 *.log
