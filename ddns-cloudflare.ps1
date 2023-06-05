@@ -102,7 +102,7 @@ function New-DNSRecord {
 
     Write-LogVerbose -Content "New-DNSRecord: Generated JSON payload $Body"
 
-    return Invoke-RestMethod $DNSRecordsUri -Method Post -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -TimeoutSec -NoProxy:$Settings.NoProxy
+    return Invoke-RestMethod $DNSRecordsUri -Method Post -Authentication OAuth -Token $OAuthToken -Body $Body -ContentType "application/json" -NoProxy:$Settings.NoProxy
 }
 
 function Update-DNSRecordIP {
